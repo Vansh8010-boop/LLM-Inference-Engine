@@ -189,11 +189,13 @@ class Transformer(nn.Module):
         return self.embed_tokens.weight.dtype
 
     @torch.inference_mode()
-    def forward(self, input_ids: torch.Tensor, start_pos: int = 0, cache=None, last_only: bool = True):
+    def forward(self, input_ids: torch.Tensor, start_pos: int = 0, cache=None, last_only: bool = True,
+                keep_last: int | None = None):
         """input_ids: (B, T) tokens at positions start_pos .. start_pos+T-1.
 
         Without a cache, input_ids must be the whole sequence (start_pos=0).
-        Returns logits (B, 1, V) for the last position, or (B, T, V) if last_only=False.
+        Returns logits (B, 1, V) for the last position, (B, T, V) if last_only=False,
+        or (B, keep_last, V) for the last keep_last positions.
         """
         t = input_ids.shape[1]
         x = self.embed_tokens(input_ids)
@@ -201,7 +203,9 @@ class Transformer(nn.Module):
         sin = self.rope_sin[start_pos : start_pos + t].to(x.dtype)
         for layer in self.layers:
             x = layer(x, cos, sin, cache, start_pos)
-        if last_only:
+        if keep_last is not None:
+            x = x[:, -keep_last:]
+        elif last_only:
             x = x[:, -1:]
         return self.lm_head(self.norm(x))
 
@@ -221,15 +225,18 @@ class Transformer(nn.Module):
         return self.lm_head(self.norm(x[0, batch.logits_index]))
 
     @classmethod
-    def from_pretrained(cls, model_dir: str | Path, device, dtype=torch.float16) -> "Transformer":
+    def from_pretrained(cls, model_dir: str | Path, device, dtype=torch.float16,
+                        quantize: str | None = None) -> "Transformer":
         model_dir = Path(model_dir)
         cfg = ModelConfig.from_pretrained(model_dir)
         with torch.device("meta"):
             model = cls(cfg)
 
+        # Read each tensor straight onto the target device, so system RAM never holds
+        # the whole checkpoint (1.5B in fp16 would be ~3 GB of RAM otherwise).
         state = {}
         for file in sorted(model_dir.glob("*.safetensors")):
-            with safe_open(str(file), framework="pt", device="cpu") as f:
+            with safe_open(str(file), framework="pt", device=str(torch.device(device))) as f:
                 for key in f.keys():
                     state[key.removeprefix("model.")] = f.get_tensor(key).to(dtype)
         if cfg.tie_word_embeddings:
@@ -246,4 +253,10 @@ class Transformer(nn.Module):
         model.rope_cos, model.rope_sin = rope_tables(
             cfg.head_dim, cfg.max_position_embeddings, cfg.rope_theta, device
         )
+        if quantize == "int8":
+            from engine.quant import quantize_model
+
+            quantize_model(model)
+        elif quantize is not None:
+            raise ValueError(f"unknown quantization {quantize!r}")
         return model

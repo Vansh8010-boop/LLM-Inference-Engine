@@ -52,10 +52,11 @@ class LLMEngine:
         self.num_steps = 0
 
     @classmethod
-    def from_pretrained(cls, model_dir: str | Path = DEFAULT_MODEL, device=None, dtype=torch.float16, **kwargs):
+    def from_pretrained(cls, model_dir: str | Path = DEFAULT_MODEL, device=None, dtype=torch.float16,
+                        quantize: str | None = None, **kwargs):
         model_dir = Path(model_dir)
         device = device or setup_device()
-        model = Transformer.from_pretrained(model_dir, device, dtype)
+        model = Transformer.from_pretrained(model_dir, device, dtype, quantize)
         return cls(model, AutoTokenizer.from_pretrained(model_dir), load_eos_ids(model_dir), **kwargs)
 
     # ---- requests ----

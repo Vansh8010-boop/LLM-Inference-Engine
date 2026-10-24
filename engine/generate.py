@@ -104,11 +104,12 @@ class LLM:
         dtype=torch.float16,
         kv_cache_gb: float = 1.0,
         block_size: int = 16,
+        quantize: str | None = None,
     ):
         self.model_dir = Path(model_dir)
         self.device = device or setup_device()
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_dir)
-        self.model = Transformer.from_pretrained(self.model_dir, self.device, dtype)
+        self.model = Transformer.from_pretrained(self.model_dir, self.device, dtype, quantize)
         self.eos_ids = load_eos_ids(self.model_dir)
         self.pool = PagedKVPool.from_budget(
             self.model.config, int(kv_cache_gb * 1e9), block_size, self.device, dtype

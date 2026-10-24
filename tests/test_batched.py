@@ -10,6 +10,8 @@ divergence is allowed at a genuine near-tie, and the reference's logit gap
 there is checked.
 """
 
+import gc
+
 import pytest
 import torch
 
@@ -46,8 +48,12 @@ def check_against_reference(llm: LLM, prompts, got, params) -> None:
 
 
 @pytest.fixture(scope="module")
-def engine(llm: LLM) -> LLMEngine:
-    return LLMEngine(llm.model, llm.tokenizer, llm.eos_ids, kv_cache_gb=1.0)
+def engine(llm: LLM):
+    eng = LLMEngine(llm.model, llm.tokenizer, llm.eos_ids, kv_cache_gb=0.5)
+    yield eng
+    del eng  # give the KV pool back before later modules load more weights
+    gc.collect()
+    torch.cuda.empty_cache()
 
 
 def test_batched_matches_reference(llm: LLM, engine: LLMEngine, prompts):

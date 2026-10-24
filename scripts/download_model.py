@@ -16,6 +16,7 @@ import time
 from pathlib import Path
 
 import torch
+from huggingface_hub import snapshot_download
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -32,17 +33,15 @@ def download(repo_id: str, force: bool) -> Path:
 
     print(f"[download] {repo_id} -> {out_dir}")
     start = time.time()
-    tokenizer = AutoTokenizer.from_pretrained(repo_id, cache_dir=CACHE_DIR)
-    # Keep the checkpoint's native bf16 so the saved weights are untouched.
-    model = AutoModelForCausalLM.from_pretrained(
-        repo_id, cache_dir=CACHE_DIR, dtype=torch.bfloat16
-    )
-
+    # Fetch the checkpoint files straight to disk (never loading the weights into RAM),
+    # reusing anything an interrupted earlier run left in the cache.
+    snapshot = Path(snapshot_download(
+        repo_id, cache_dir=CACHE_DIR,
+        allow_patterns=["*.json", "*.safetensors", "*.txt", "*.jinja", "tokenizer*", "merges*", "vocab*"],
+    ))
     out_dir.mkdir(parents=True, exist_ok=True)
-    tokenizer.save_pretrained(out_dir)
-    model.save_pretrained(out_dir, safe_serialization=True)
-    model.generation_config.save_pretrained(out_dir)
-    del model
+    for f in snapshot.iterdir():
+        shutil.copyfile(f.resolve(), out_dir / f.name)
 
     shutil.rmtree(CACHE_DIR, ignore_errors=True)
     size_gb = sum(f.stat().st_size for f in out_dir.rglob("*") if f.is_file()) / 1e9

@@ -80,13 +80,14 @@ def main() -> None:
     parser.add_argument("--block-size", type=int, default=16)
     parser.add_argument("--max-num-seqs", type=int, default=64)
     parser.add_argument("--max-prefill-tokens", type=int, default=2048)
+    parser.add_argument("--quantize", choices=["int8"], default=None, help="INT8 weight-only quantization")
     parser.add_argument("--gpu-fraction", type=float, default=None, help="cap on GPU memory (default 0.75)")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args()
 
     engine = LLMEngine.from_pretrained(
-        args.model, device=setup_device(args.gpu_fraction), kv_cache_gb=args.kv_cache_gb,
+        args.model, device=setup_device(args.gpu_fraction), quantize=args.quantize, kv_cache_gb=args.kv_cache_gb,
         block_size=args.block_size,
         scheduler_config=SchedulerConfig(args.max_num_seqs, args.max_prefill_tokens),
     )

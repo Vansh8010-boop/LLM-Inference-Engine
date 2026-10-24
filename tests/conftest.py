@@ -9,6 +9,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 MODEL_DIR = PROJECT_ROOT / "models" / "Qwen2.5-0.5B-Instruct"
 WORKLOAD = PROJECT_ROOT / "bench" / "workloads" / "sharegpt_1000.jsonl"
 N_PROMPTS = int(os.environ.get("MINI_INFER_TEST_PROMPTS", 100))
+# The speculative tests hold both models (~4.1 GB of weights): allow a bit more than the 75% default.
+os.environ.setdefault("MINI_INFER_GPU_FRACTION", "0.85")
 MAX_NEW_TOKENS = int(os.environ.get("MINI_INFER_TEST_TOKENS", 32))
 
 requires_gpu = pytest.mark.skipif(
@@ -22,7 +24,7 @@ def llm():
     """Our single-sequence engine, shared by every GPU test (one copy of the weights)."""
     from engine.generate import LLM
 
-    return LLM(MODEL_DIR, kv_cache_gb=0.5)
+    return LLM(MODEL_DIR, kv_cache_gb=0.3)
 
 
 @pytest.fixture(scope="session")
