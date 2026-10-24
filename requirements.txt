@@ -1,0 +1,38 @@
+# Install PyTorch FIRST with CUDA (see SETUP.md), then: pip install -r requirements.txt
+# torch is listed so pip won't swap in a CPU-only build if it's already installed.
+torch>=2.5
+
+# Model weights + baseline + datasets
+transformers>=4.45
+safetensors
+accelerate
+huggingface_hub
+datasets
+tokenizers
+
+# API server
+fastapi
+uvicorn[standard]
+sse-starlette
+pydantic>=2
+
+# Load testing / clients
+httpx
+aiohttp
+openai
+
+# Benchmarks, plots, tracking
+numpy
+pandas
+matplotlib
+plotly
+wandb
+tqdm
+
+# Quality evals (WikiText-2 perplexity, MMLU/HellaSwag)
+lm-eval
+
+# Testing / dev
+pytest
+pytest-asyncio
+python-dotenv

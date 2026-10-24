@@ -1,0 +1,32 @@
+{
+  "name": "kv_memory_waste",
+  "timestamp": "2026-10-24T14:30:06",
+  "config": {
+    "workload": "D:\\mini-infer\\bench\\workloads\\sharegpt_1000.jsonl",
+    "kv_gb": 3.0,
+    "block_size": 16,
+    "batch_size": 8,
+    "trials": 200
+  },
+  "kv_bytes_per_token": 12288,
+  "budget_tokens": 244140,
+  "max_context": 2048,
+  "waste_pct": {
+    "reserve max context": 80.742822265625,
+    "pad to batch max": 62.68751466436578,
+    "paged": 1.9054938713785419
+  },
+  "max_concurrent": {
+    "reserve max context": 119,
+    "pad to batch max": 138.0,
+    "paged": 608.0
+  },
+  "paged_waste_by_block_size": {
+    "1": 0.0,
+    "8": 0.9,
+    "16": 1.91,
+    "32": 3.77,
+    "64": 7.5,
+    "128": 13.69
+  }
+}

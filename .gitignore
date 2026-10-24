@@ -1,0 +1,15 @@
+.venv/
+models/
+data/
+__pycache__/
+*.pyc
+.env
+.pytest_cache/
+wandb/
+*.safetensors
+*.bin
+.ipynb_checkpoints/
+node_modules/
+site/dist/
+.vercel/
+*.log
