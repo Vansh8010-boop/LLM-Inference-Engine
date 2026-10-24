@@ -1,0 +1,34 @@
+{
+  "name": "quant_bench",
+  "model": "Qwen2.5-0.5B-Instruct",
+  "timestamp": "2026-10-24T17:14:15",
+  "server": {
+    "torch": "2.11.0+cu128",
+    "cuda": "12.8",
+    "gpu": "NVIDIA GeForce RTX 3050 6GB Laptop GPU",
+    "gpu_memory_gb": 6.44,
+    "driver": "610.47",
+    "commit": "8260668"
+  },
+  "ppl_tokens": null,
+  "results": [
+    {
+      "precision": "fp16",
+      "weights_gb": 0.988065536,
+      "single_tok_s": 31.875794373433056,
+      "batched_tok_s": 469.50712286205476,
+      "ppl": 13.652177752873357,
+      "peak_memory_gb": 2.752392192
+    },
+    {
+      "precision": "int8",
+      "weights_gb": 0.630847232,
+      "single_tok_s": 11.964177085299314,
+      "batched_tok_s": 306.55484689445217,
+      "greedy_agreement": 0.4375,
+      "ppl": 13.625829638951375,
+      "peak_memory_gb": 2.387930112,
+      "ppl_increase_pct": -0.192995684636732
+    }
+  ]
+}

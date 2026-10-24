@@ -5,9 +5,16 @@ For each linear layer W (out x in):
     W_q[o, i] = round(W[o, i] / scale[o])  in [-127, 127], stored as int8
     y         = (x @ W_qᵀ) * scale + bias
 
-Activations stay fp16. The matmul uses PyTorch's fused weight-only kernel
-(torch._weight_int8pack_mm), which reads the int8 weights directly; if that op
-is unavailable it falls back to dequantizing to fp16 per call (correct, slower).
+Activations stay fp16. By default each call converts the int8 weight to fp16
+and runs a cuBLAS matmul. PyTorch's fused weight-only kernel
+(torch._weight_int8pack_mm) is available as fused=True, but measured on an
+RTX 3050 Laptop (torch 2.11) it scales linearly with the number of rows:
+    rows      fused int8   dequant + cuBLAS   fp16 cuBLAS
+    1           213 us         226 us            58 us
+    32        3,135 us         190 us           106 us
+    1024     70,014 us         844 us           590 us
+So INT8 saves memory here but not time: beating fp16 needs a custom fused
+kernel (the Triton stretch goal).
 """
 
 import torch
@@ -50,17 +57,20 @@ class Int8Linear(nn.Module):
             y = torch._weight_int8pack_mm(x.reshape(-1, self.in_features), self.weight, self.scale)
             y = y.view(*x.shape[:-1], self.out_features)
         else:
-            y = F.linear(x, self.weight.to(x.dtype)) * self.scale
+            # Scale the weight back to its real magnitude BEFORE the matmul: multiplying by
+            # the raw int8 values (up to 127) and scaling afterwards overflows fp16
+            # (sums over 4864 inputs exceed 65504) and turns into inf / NaN.
+            y = F.linear(x, self.weight.to(x.dtype) * self.scale[:, None])
         return y + self.bias if self.bias is not None else y
 
     def extra_repr(self) -> str:
         return f"in={self.in_features}, out={self.out_features}, int8, fused={self.fused}"
 
 
-def quantize_model(model: nn.Module) -> nn.Module:
+def quantize_model(model: nn.Module, fused: bool = False) -> nn.Module:
     """Swap every transformer-layer projection for an Int8Linear, in place."""
     device = next(model.parameters()).device
-    fused = _fused_int8_available(device)
+    fused = fused and _fused_int8_available(device)
     for layer in model.layers:
         for parent in (layer.self_attn, layer.mlp):
             for name in QUANTIZED_LINEARS:

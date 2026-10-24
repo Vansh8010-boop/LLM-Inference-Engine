@@ -32,6 +32,17 @@ def test_fused_kernel_matches_dequantized_matmul():
 
 
 @requires_gpu
+def test_dequant_path_does_not_overflow_on_large_activations():
+    """Real activations reach the hundreds; x @ int8ᵀ before scaling would overflow fp16."""
+    torch.manual_seed(0)
+    lin = nn.Linear(4864, 896, bias=False).cuda().half()
+    x = torch.randn(4, 4864, device="cuda", dtype=torch.float16) * 50
+    y = Int8Linear(lin, fused=False)(x)
+    assert torch.isfinite(y).all()
+    assert torch.allclose(y.float(), lin(x).float(), rtol=0.05, atol=2.0)
+
+
+@requires_gpu
 def test_int8_model_stays_close_to_fp16(llm, prompts):
     from engine.model import Transformer
 
