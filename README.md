@@ -1,5 +1,7 @@
 # mini-infer: an LLM inference engine from scratch
 
+[![tests](https://github.com/Vansh8010-boop/LLM-Inference-Engine/actions/workflows/tests.yml/badge.svg)](https://github.com/Vansh8010-boop/LLM-Inference-Engine/actions/workflows/tests.yml)
+
 A serving engine for Qwen2.5 written from scratch in PyTorch: its own transformer
 forward pass, a paged KV cache, a continuous-batching scheduler with preemption,
 and a streaming OpenAI-compatible API. Measured against a Hugging Face

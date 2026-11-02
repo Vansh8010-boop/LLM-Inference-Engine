@@ -1,0 +1,29 @@
+name: tests
+
+# GitHub's runners have no GPU, so this runs the CPU tests (block manager,
+# scheduler, INT8 quantization math, speculative acceptance rule). The GPU
+# tests (exact Hugging Face match, batching, preemption) skip themselves here
+# and are run locally / on Kaggle against the real models.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  cpu-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install CPU-only dependencies
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install "transformers==5.20.2" safetensors pytest
+      - name: Run tests
+        run: python -m pytest tests -v -rs
