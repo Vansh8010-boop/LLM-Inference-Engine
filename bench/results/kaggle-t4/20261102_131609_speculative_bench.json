@@ -1,0 +1,50 @@
+{
+  "name": "speculative_bench",
+  "timestamp": "2026-11-02T13:16:09",
+  "server": {
+    "torch": "2.11.0+cu128",
+    "cuda": "12.8",
+    "gpu": "Tesla T4",
+    "gpu_memory_gb": 15.64,
+    "driver": "580.178.04\n580.178.04",
+    "commit": "5f2dc89"
+  },
+  "config": {
+    "num_prompts": 10,
+    "max_tokens": 128,
+    "ks": [
+      2,
+      4,
+      6
+    ],
+    "target_quantize": null,
+    "gpu_fraction": 0.85
+  },
+  "target_alone_tok_s": 31.29797327780805,
+  "results": [
+    {
+      "k": 2,
+      "tok_s": 28.1990228420571,
+      "speedup": 0.9009855875253023,
+      "acceptance_rate": 0.6780758556891767,
+      "tokens_per_round": 2.340659340659341,
+      "identical_to_target": 0.7
+    },
+    {
+      "k": 4,
+      "tok_s": 23.185029734536002,
+      "speedup": 0.740783741130466,
+      "acceptance_rate": 0.5415365396627108,
+      "tokens_per_round": 3.1277641277641277,
+      "identical_to_target": 0.6
+    },
+    {
+      "k": 6,
+      "tok_s": 19.429062455742674,
+      "speedup": 0.6207770159200349,
+      "acceptance_rate": 0.44401168451801365,
+      "tokens_per_round": 3.6358381502890174,
+      "identical_to_target": 0.9
+    }
+  ]
+}

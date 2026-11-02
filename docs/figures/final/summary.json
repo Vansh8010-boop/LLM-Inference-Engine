@@ -1,0 +1,90 @@
+{
+  "gpu": "Tesla T4",
+  "users": {
+    "1": {
+      "hf_tok_s": 35.4,
+      "engine_tok_s": 34.74,
+      "speedup": 0.9813559322033899,
+      "hf_ttft_p50_ms": 37.99,
+      "engine_ttft_p50_ms": 34.07,
+      "hf_ttft_p99_ms": 127.37,
+      "engine_ttft_p99_ms": 123.54
+    },
+    "8": {
+      "hf_tok_s": 123.47,
+      "engine_tok_s": 258.37,
+      "speedup": 2.0925730946788694,
+      "hf_ttft_p50_ms": 9461.48,
+      "engine_ttft_p50_ms": 68.69,
+      "hf_ttft_p99_ms": 21021.0,
+      "engine_ttft_p99_ms": 296.75
+    },
+    "16": {
+      "hf_tok_s": 158.18,
+      "engine_tok_s": 324.15,
+      "speedup": 2.0492476925022123,
+      "hf_ttft_p50_ms": 20216.05,
+      "engine_ttft_p50_ms": 94.24,
+      "hf_ttft_p99_ms": 31803.41,
+      "engine_ttft_p99_ms": 380.27
+    },
+    "32": {
+      "hf_tok_s": 170.48,
+      "engine_tok_s": 341.98,
+      "speedup": 2.0059831065227596,
+      "hf_ttft_p50_ms": 39356.35,
+      "engine_ttft_p50_ms": 184.23,
+      "hf_ttft_p99_ms": 59987.15,
+      "engine_ttft_p99_ms": 894.7
+    },
+    "64": {
+      "hf_tok_s": 165.01,
+      "engine_tok_s": 388.95,
+      "speedup": 2.357129870916914,
+      "hf_ttft_p50_ms": 89953.52,
+      "engine_ttft_p50_ms": 364.23,
+      "hf_ttft_p99_ms": 116856.62,
+      "engine_ttft_p99_ms": 1418.28
+    }
+  },
+  "rates": {
+    "0.5": {
+      "hf_ttft_p50_ms": 8234.62,
+      "hf_ttft_p99_ms": 21824.94,
+      "engine_ttft_p50_ms": 56.24,
+      "engine_ttft_p99_ms": 153.44,
+      "hf_tok_s": 115.9,
+      "engine_tok_s": 120.22
+    },
+    "1": {
+      "hf_ttft_p50_ms": 10748.51,
+      "hf_ttft_p99_ms": 50712.71,
+      "engine_ttft_p50_ms": 60.01,
+      "engine_ttft_p99_ms": 166.38,
+      "hf_tok_s": 141.63,
+      "engine_tok_s": 229.14
+    },
+    "2": {
+      "hf_ttft_p50_ms": 25710.95,
+      "hf_ttft_p99_ms": 77371.45,
+      "engine_ttft_p50_ms": 80.82,
+      "engine_ttft_p99_ms": 222.72,
+      "hf_tok_s": 146.38,
+      "engine_tok_s": 311.46
+    },
+    "4": {
+      "hf_ttft_p50_ms": 11912.12,
+      "hf_ttft_p99_ms": 62469.86,
+      "engine_ttft_p50_ms": 92.17,
+      "engine_ttft_p99_ms": 243.84,
+      "hf_tok_s": 154.43,
+      "engine_tok_s": 353.91
+    }
+  },
+  "ablation_c32_tok_s": {
+    "HF, one request at a time": 35.12,
+    "mini-infer, no batching": 35.07,
+    "HF, static batching (bs 32)": 170.48,
+    "mini-infer (paged + continuous batching)": 341.98
+  }
+}

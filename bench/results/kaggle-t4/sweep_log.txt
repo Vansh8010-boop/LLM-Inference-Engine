@@ -1,0 +1,68 @@
+[09:56:01] sweep start: 20 runs x 3 repeats, estimated 3.1 h, GPU cap 85%, engine KV 4.0 GB
+[09:56:01] hf_bs1: starting server (2 runs)
+[09:56:14]   sweep_hf_c1: start, GPU 72, 1097 MiB, 585 MHz
+44, 0 MiB, 300 MHz
+[10:05:42]   sweep_hf_c1: 35.4 tok/s, TTFT p50 38 ms p99 127 ms, errors 0 (9.5 min)
+[10:06:02]   sweep_ablation_hf_sequential_c32: start, GPU 71, 1375 MiB, 585 MHz
+37, 0 MiB, 300 MHz
+[10:21:02]   sweep_ablation_hf_sequential_c32: 35.1 tok/s, TTFT p50 144241 ms p99 271945 ms, errors 0 (15.0 min)
+[10:21:33] hf_bs8: starting server (1 runs)
+[10:21:43]   sweep_hf_c8: start, GPU 72, 1097 MiB, 585 MHz
+38, 0 MiB, 300 MHz
+[10:29:43]   sweep_hf_c8: 123.5 tok/s, TTFT p50 9461 ms p99 21021 ms, errors 0 (8.0 min)
+[10:30:13] hf_bs16: starting server (1 runs)
+[10:30:23]   sweep_hf_c16: start, GPU 67, 1097 MiB, 585 MHz
+35, 0 MiB, 300 MHz
+[10:40:06]   sweep_hf_c16: 158.2 tok/s, TTFT p50 20216 ms p99 31803 ms, errors 0 (9.7 min)
+[10:40:36] hf_bs32: starting server (6 runs)
+[10:40:46]   sweep_hf_c32: start, GPU 68, 1097 MiB, 585 MHz
+36, 0 MiB, 300 MHz
+[10:55:31]   sweep_hf_c32: 170.5 tok/s, TTFT p50 39356 ms p99 59987 ms, errors 0 (14.7 min)
+[10:55:51]   sweep_hf_c64: start, GPU 71, 3805 MiB, 585 MHz
+35, 0 MiB, 300 MHz
+[11:18:46]   sweep_hf_c64: 165.0 tok/s, TTFT p50 89954 ms p99 116857 ms, errors 0 (22.9 min)
+[11:19:06]   sweep_rate_hf_r0.5: start, GPU 71, 3805 MiB, 585 MHz
+35, 0 MiB, 300 MHz
+[11:27:35]   sweep_rate_hf_r0.5: 115.9 tok/s, TTFT p50 8235 ms p99 21825 ms, errors 0 (8.5 min)
+[11:27:55]   sweep_rate_hf_r1: start, GPU 70, 3851 MiB, 585 MHz
+35, 0 MiB, 300 MHz
+[11:34:57]   sweep_rate_hf_r1: 141.6 tok/s, TTFT p50 10749 ms p99 50713 ms, errors 0 (7.0 min)
+[11:35:17]   sweep_rate_hf_r2: start, GPU 71, 3851 MiB, 585 MHz
+35, 0 MiB, 300 MHz
+[11:42:07]   sweep_rate_hf_r2: 146.4 tok/s, TTFT p50 25711 ms p99 77371 ms, errors 0 (6.8 min)
+[11:42:28]   sweep_rate_hf_r4: start, GPU 71, 3851 MiB, 585 MHz
+35, 0 MiB, 300 MHz
+[11:48:59]   sweep_rate_hf_r4: 154.4 tok/s, TTFT p50 11912 ms p99 62470 ms, errors 0 (6.5 min)
+[11:49:30] engine: starting server (9 runs)
+[11:49:40]   sweep_engine_c1: start, GPU 70, 4969 MiB, 585 MHz
+36, 0 MiB, 300 MHz
+[11:59:18]   sweep_engine_c1: 34.7 tok/s, TTFT p50 34 ms p99 124 ms, errors 0 (9.6 min)
+[11:59:38]   sweep_engine_c8: start, GPU 71, 5195 MiB, 585 MHz
+37, 0 MiB, 300 MHz
+[12:03:50]   sweep_engine_c8: 258.4 tok/s, TTFT p50 69 ms p99 297 ms, errors 0 (4.2 min)
+[12:04:10]   sweep_engine_c16: start, GPU 69, 5297 MiB, 585 MHz
+35, 0 MiB, 300 MHz
+[12:09:16]   sweep_engine_c16: 324.1 tok/s, TTFT p50 94 ms p99 380 ms, errors 0 (5.1 min)
+[12:09:36]   sweep_engine_c32: start, GPU 70, 5405 MiB, 585 MHz
+35, 0 MiB, 300 MHz
+[12:17:20]   sweep_engine_c32: 342.0 tok/s, TTFT p50 184 ms p99 895 ms, errors 0 (7.7 min)
+[12:17:40]   sweep_engine_c64: start, GPU 70, 8995 MiB, 585 MHz
+35, 0 MiB, 300 MHz
+[12:27:49]   sweep_engine_c64: 388.9 tok/s, TTFT p50 364 ms p99 1418 ms, errors 0 (10.2 min)
+[12:28:09]   sweep_rate_engine_r0.5: start, GPU 70, 8185 MiB, 585 MHz
+35, 0 MiB, 300 MHz
+[12:36:19]   sweep_rate_engine_r0.5: 120.2 tok/s, TTFT p50 56 ms p99 153 ms, errors 0 (8.2 min)
+[12:36:40]   sweep_rate_engine_r1: start, GPU 71, 8185 MiB, 585 MHz
+35, 0 MiB, 300 MHz
+[12:41:18]   sweep_rate_engine_r1: 229.1 tok/s, TTFT p50 60 ms p99 166 ms, errors 0 (4.6 min)
+[12:41:38]   sweep_rate_engine_r2: start, GPU 69, 8185 MiB, 585 MHz
+34, 0 MiB, 300 MHz
+[12:45:14]   sweep_rate_engine_r2: 311.5 tok/s, TTFT p50 81 ms p99 223 ms, errors 0 (3.6 min)
+[12:45:34]   sweep_rate_engine_r4: start, GPU 69, 8185 MiB, 585 MHz
+35, 0 MiB, 300 MHz
+[12:48:49]   sweep_rate_engine_r4: 353.9 tok/s, TTFT p50 92 ms p99 244 ms, errors 0 (3.3 min)
+[12:49:20] engine_nobatch: starting server (1 runs)
+[12:49:30]   sweep_ablation_engine_nobatch_c32: start, GPU 68, 4969 MiB, 585 MHz
+36, 0 MiB, 300 MHz
+[13:04:30]   sweep_ablation_engine_nobatch_c32: 35.1 tok/s, TTFT p50 139079 ms p99 274529 ms, errors 0 (15.0 min)
+[13:05:00] sweep finished: 20 runs completed this session
