@@ -7,6 +7,9 @@ forward pass, a paged KV cache, a continuous-batching scheduler with preemption,
 and a streaming OpenAI-compatible API. Measured against a Hugging Face
 `model.generate()` baseline on the same GPU and the same ShareGPT traffic.
 
+**Website with interactive charts and a live paged-attention animation:
+[llm-inference-engine-site.vercel.app](https://llm-inference-engine-site.vercel.app/)**
+
 **2.0–2.4× the throughput of the best Hugging Face configuration from 8 to 64
 concurrent users, and the first token arrives about 200× sooner**
 (Qwen2.5-0.5B FP16, one Tesla T4, median of 3 runs).
