@@ -1,0 +1,45 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Baseline server (sequential)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "server.baseline_server",
+      "args": ["--max-batch-size", "1"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "Baseline server (static batch 8)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "server.baseline_server",
+      "args": ["--max-batch-size", "8"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "Load test (synthetic, 8 users)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "bench.load_test",
+      "args": ["--workload", "bench/workloads/synthetic_p128_o64_n64.jsonl", "--concurrency", "8", "--name", "debug"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "Current file",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${file}",
+      "cwd": "${workspaceFolder}",
+      "env": { "PYTHONPATH": "${workspaceFolder}" },
+      "console": "integratedTerminal",
+      "justMyCode": true
+    }
+  ]
+}
