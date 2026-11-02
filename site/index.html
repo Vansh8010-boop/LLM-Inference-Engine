@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>mini-infer</title>
+  <meta name="description" content="An LLM inference engine built from scratch: paged KV cache and continuous batching give 2.0-2.4x the throughput of Hugging Face and first tokens about 200x sooner.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=3">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='2' width='12' height='12' rx='3' fill='%232a78d6'/%3E%3Crect x='18' y='2' width='12' height='12' rx='3' fill='%232a78d6'/%3E%3Crect x='2' y='18' width='12' height='12' rx='3' fill='%23eb6834'/%3E%3Crect x='18' y='18' width='12' height='12' rx='3' fill='%23c3c2b7'/%3E%3C/svg%3E">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#top">mini-infer</a>
+    <nav>
+      <a href="#how">How it works</a>
+      <a href="#results">Results</a>
+      <a href="#ablation">Ablation</a>
+      <a href="#lessons">What didn't work</a>
+      <a href="#reproduce">Reproduce</a>
+      <a class="gh" href="https://github.com/Vansh8010-boop/LLM-Inference-Engine">GitHub</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <!-- 1. Hero -->
+    <section class="hero">
+      <p class="eyebrow">LLM inference engine, built from scratch in PyTorch</p>
+      <h1>Serving Qwen2.5 to many users at once, <span class="accent">2.4× faster</span> than Hugging Face.</h1>
+      <p class="lede">
+        My own transformer forward pass, a paged KV cache, a continuous-batching scheduler with preemption,
+        and a streaming OpenAI-compatible API, measured against Hugging Face <code>model.generate()</code>
+        on the same GPU and the same real chat traffic.
+      </p>
+      <div class="stats" id="hero-stats" aria-live="polite"></div>
+      <p class="fineprint" id="hero-note"></p>
+      <div class="cta">
+        <a class="btn primary" href="https://github.com/Vansh8010-boop/LLM-Inference-Engine">View the code</a>
+        <a class="btn" href="#results">See the results</a>
+      </div>
+    </section>
+
+    <!-- 2. Demo -->
+    <section id="demo" class="band">
+      <h2>Demo</h2>
+      <div class="demo-placeholder">
+        <p><strong>Side-by-side video coming soon:</strong> the engine and the Hugging Face baseline answering the
+        same 32 prompts at once. Hugging Face streams nothing until a whole padded batch finishes; mini-infer starts
+        answering every user within a fraction of a second.</p>
+      </div>
+    </section>
+
+    <!-- 3. How it works -->
+    <section id="how">
+      <h2>How it works</h2>
+      <p class="section-lede">Every step the scheduler rebuilds the batch, and the block manager decides where each
+        sequence's KV cache lives. New requests join the running batch at every step instead of waiting for a batch to finish.</p>
+
+      <div class="arch" role="img" aria-label="Architecture: clients send requests to the API server, which feeds the scheduler; the scheduler asks the block manager for KV blocks and runs one forward pass per step; tokens stream back to clients.">
+        <div class="node">Clients<span>OpenAI SDK, curl</span></div>
+        <div class="edge">HTTP / SSE</div>
+        <div class="node">API server<span>server/api.py</span></div>
+        <div class="edge">requests</div>
+        <div class="node key">Scheduler<span>admit · decode · retire · preempt</span></div>
+        <div class="edge">one step</div>
+        <div class="node">Model runner<span>own Qwen2 forward pass</span></div>
+        <div class="node side key">Block manager<span>free list + block tables</span></div>
+        <div class="node side">Paged KV pool<span>16-token blocks</span></div>
+      </div>
+
+      <div class="card paging">
+        <div class="paging-head">
+          <h3>Paged attention, live</h3>
+          <div class="controls">
+            <button id="pg-play" class="btn small">Pause</button>
+            <button id="pg-step" class="btn small">Step</button>
+            <button id="pg-reset" class="btn small">Reset</button>
+          </div>
+        </div>
+        <p class="muted">A pool of KV blocks (4 tokens each here, 16 in the engine). Requests arrive, take blocks only as
+          they grow, and give them back the moment they finish. The bottom row shows what reserving the maximum length
+          up front would hold for the same requests.</p>
+        <div class="pg-legend" id="pg-legend"></div>
+        <div class="pg-grid" id="pg-grid" aria-label="KV block pool"></div>
+        <div class="pg-tables" id="pg-tables"></div>
+        <div class="pg-stats" id="pg-stats"></div>
+      </div>
+    </section>
+
+    <!-- 4. Results -->
+    <section id="results" class="band">
+      <h2>Results</h2>
+      <p class="section-lede" id="hw-note"></p>
+
+      <div class="grid2">
+        <figure class="card chart-card">
+          <figcaption><h3>Throughput vs concurrent users</h3><p>output tokens per second, higher is better</p></figcaption>
+          <div class="chart-box"><canvas id="c-throughput"></canvas></div>
+          <details><summary>Data table</summary><div id="t-throughput"></div></details>
+        </figure>
+        <figure class="card chart-card">
+          <figcaption><h3>Time to first token vs concurrent users</h3><p>median, seconds, log scale, lower is better</p></figcaption>
+          <div class="chart-box"><canvas id="c-ttft-users"></canvas></div>
+          <details><summary>Data table</summary><div id="t-ttft-users"></div></details>
+        </figure>
+        <figure class="card chart-card">
+          <figcaption><h3>Tail latency vs arrival rate</h3><p>p99 time to first token, seconds, log scale</p></figcaption>
+          <div class="chart-box"><canvas id="c-rate"></canvas></div>
+          <details><summary>Data table</summary><div id="t-rate"></div></details>
+        </figure>
+        <figure class="card chart-card">
+          <figcaption><h3>KV cache: time per generated token</h3><p>ms per token over a 512-token answer</p></figcaption>
+          <div class="chart-box"><canvas id="c-kv"></canvas></div>
+          <p class="note" id="n-kv"></p>
+        </figure>
+        <figure class="card chart-card">
+          <figcaption><h3>KV memory wasted</h3><p>reserved but unused, ShareGPT request lengths</p></figcaption>
+          <div class="chart-box"><canvas id="c-waste"></canvas></div>
+          <p class="note">Hardware-independent: computed from the real request lengths with the engine's own block allocator.</p>
+        </figure>
+        <figure class="card chart-card">
+          <figcaption><h3>Requests that fit in the same memory</h3><p id="cap-sub">concurrent sequences in the KV budget</p></figcaption>
+          <div class="chart-box"><canvas id="c-capacity"></canvas></div>
+          <p class="note" id="n-capacity"></p>
+        </figure>
+      </div>
+
+      <h3 class="sub">Two features that are correct, and not faster on this hardware</h3>
+      <div class="grid2">
+        <div class="card">
+          <h3>INT8 weights</h3>
+          <div id="t-quant"></div>
+          <p class="note">Quality holds and memory drops, but there is no fast INT8 matmul here: the weights are converted
+            back to FP16 on every call, which costs more than reading half the bytes saves. A fused kernel would turn the
+            saving into speed.</p>
+        </div>
+        <div class="card">
+          <h3>Speculative decoding (0.5B drafts, 1.5B verifies)</h3>
+          <div id="t-spec"></div>
+          <p class="note">The guesses are accepted often, but at batch size 1 both models are limited by kernel-launch
+            overhead, so the 0.5B draft costs about half a 1.5B step instead of a tenth.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. Ablation -->
+    <section id="ablation">
+      <h2>What each piece contributes</h2>
+      <p class="section-lede">32 concurrent users, same GPU and requests. Each row adds one idea.</p>
+      <figure class="card chart-card wide">
+        <div class="chart-box short"><canvas id="c-ablation"></canvas></div>
+        <p class="note" id="n-ablation"></p>
+      </figure>
+    </section>
+
+    <!-- 6. What didn't work -->
+    <section id="lessons" class="band">
+      <h2>What didn't work (and what it taught me)</h2>
+      <div class="lessons">
+        <article class="card"><h3>93 of 100, not 100</h3><p>My first forward pass matched Hugging Face on 93 of 100
+          prompts. The other 7 split at near-ties one fp16 step apart. Hugging Face lets SDPA handle grouped-query
+          attention itself, which picks a different kernel than repeating the K/V heads by hand. Matching that made every
+          layer bit-identical.</p></article>
+        <article class="card"><h3>Batches are never bit-identical</h3><p>A matmul over 32 rows uses different cuBLAS
+          kernels than one over 1 row, so batched output differs in the last bit. The tests demand exact matches except
+          at genuine near-ties, and check the logit gap at every divergence.</p></article>
+        <article class="card"><h3>INT8 got smaller, then slower</h3><p>PyTorch's fused INT8 kernel slows down linearly
+          with the number of rows (70 ms vs 0.6 ms for FP16 at 1,024). Dequantizing per call is faster but still loses to
+          FP16, and scaling after the int8 matmul overflowed fp16 into NaN until the weights were scaled first.</p></article>
+        <article class="card"><h3>Speculative decoding needs a big target</h3><p>Correct, with 68% of draft tokens
+          accepted, yet 0.9× speed. Small models at batch size 1 are bound by CPU kernel launches, not GPU math, so the
+          draft is not cheap enough. It pays off with a 7B+ target or CUDA graphs.</p></article>
+        <article class="card"><h3>The laptop ran out of memory, not the GPU</h3><p>A model download, a benchmark and the
+          tests at once exhausted Windows commit memory, and a progress bar piped through PowerShell grew one endless line
+          until the shell crashed. The final sweep ran on Kaggle, one job at a time, logging to files.</p></article>
+      </div>
+    </section>
+
+    <!-- 7. Reproduce -->
+    <section id="reproduce">
+      <h2>Reproduce it</h2>
+      <p class="section-lede">Every number on this page is read from <code>data/results.json</code>, exported from the
+        saved result files in the repo.</p>
+      <div class="card code">
+        <button class="btn small copy" data-copy="repro">Copy</button>
+<pre id="repro">git clone https://github.com/Vansh8010-boop/LLM-Inference-Engine.git
+cd LLM-Inference-Engine
+pip install torch --index-url https://download.pytorch.org/whl/cu128
+pip install -r requirements.txt
+python scripts/download_model.py
+python -m pytest tests -v            # exact Hugging Face match, batching, preemption
+python -m bench.final_sweep          # every configuration, 3 runs each (~3.5 h on a T4)
+python -m bench.make_plots           # charts from bench/results/
+python -m bench.export_site_data     # this page's data</pre>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Built by Vansh Kulshrestha · <a href="https://github.com/Vansh8010-boop/LLM-Inference-Engine">source on GitHub</a> · MIT license</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="app.js?v=2"></script>
+</body>
+</html>
