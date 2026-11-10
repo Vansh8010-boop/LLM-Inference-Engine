@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=3">
+  <link rel="stylesheet" href="styles.css?v=4">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='2' width='12' height='12' rx='3' fill='%232a78d6'/%3E%3Crect x='18' y='2' width='12' height='12' rx='3' fill='%232a78d6'/%3E%3Crect x='2' y='18' width='12' height='12' rx='3' fill='%23eb6834'/%3E%3Crect x='18' y='18' width='12' height='12' rx='3' fill='%23c3c2b7'/%3E%3C/svg%3E">
 </head>
 <body>
@@ -20,6 +20,7 @@
       <a href="#ablation">Ablation</a>
       <a href="#lessons">What didn't work</a>
       <a href="#reproduce">Reproduce</a>
+      <a href="blog/">Blog</a>
       <a class="gh" href="https://github.com/Vansh8010-boop/LLM-Inference-Engine">GitHub</a>
     </nav>
   </header>
@@ -39,6 +40,7 @@
       <div class="cta">
         <a class="btn primary" href="https://github.com/Vansh8010-boop/LLM-Inference-Engine">View the code</a>
         <a class="btn" href="#results">See the results</a>
+        <a class="btn" href="blog/">Read the blog post</a>
       </div>
     </section>
 
@@ -175,6 +177,10 @@
         <article class="card"><h3>The laptop ran out of memory, not the GPU</h3><p>A model download, a benchmark and the
           tests at once exhausted Windows commit memory, and a progress bar piped through PowerShell grew one endless line
           until the shell crashed. The final sweep ran on Kaggle, one job at a time, logging to files.</p></article>
+      </div>
+      <div class="card blog-teaser" style="margin-top:1.25rem">
+        <div><h3>The longer story</h3><p>What I learned building it, bugs and dead ends included.</p></div>
+        <a class="btn primary" href="blog/">Read the blog post</a>
       </div>
     </section>
 

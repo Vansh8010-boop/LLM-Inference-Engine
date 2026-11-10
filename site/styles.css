@@ -163,6 +163,24 @@ th { color: var(--ink-2); font-weight: 600; }
 .code pre { margin: 0; line-height: 1.7; white-space: pre; }
 .copy { position: absolute; top: .9rem; right: .9rem; }
 
+/* Blog post */
+.post { max-width: 720px; margin: 0 auto; padding: 4rem 16px 3rem; }
+.post h1 { font-size: clamp(1.9rem, 4.5vw, 2.8rem); letter-spacing: -.02em; }
+.post h2 { font-size: 1.45rem; margin: 2.6rem 0 .8rem; }
+.post p, .post li { font-size: 1.05rem; line-height: 1.75; color: var(--ink); }
+.post p { margin: 0 0 1.1rem; }
+.post ol, .post ul { padding-left: 1.4rem; margin: 0 0 1.2rem; }
+.post li { margin-bottom: .5rem; }
+.post .byline { color: var(--muted); font-size: .92rem; margin: .8rem 0 2rem; }
+.post .post-lede { font-size: 1.2rem; color: var(--ink-2); }
+.post-figure { margin: 1.6rem 0 1.8rem; }
+.post-figure h3 { font-size: 1rem; }
+.table-wrap { overflow-x: auto; margin: 0 0 1.4rem; }
+.post table td, .post table th { text-align: left; vertical-align: top; font-size: .92rem; line-height: 1.5; min-width: 140px; }
+.post-end { display: flex; gap: .75rem; flex-wrap: wrap; margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid var(--grid); }
+.blog-teaser { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.blog-teaser p { margin: .3rem 0 0; color: var(--ink-2); }
+
 footer { padding: 2rem 16px 3rem; text-align: center; color: var(--muted); font-size: .88rem; border-top: 1px solid var(--grid); }
 
 @media (max-width: 860px) {

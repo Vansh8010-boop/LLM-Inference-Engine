@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>What I learned building an LLM inference engine</title>
+  <meta name="description" content="Five weeks building an LLM serving engine from scratch: paged KV cache, continuous batching, and the parts that didn't work. 2.0-2.4x the throughput of Hugging Face on a T4.">
+  <meta name="author" content="Vansh Kulshrestha">
+  <meta property="og:title" content="What I learned building an LLM inference engine">
+  <meta property="og:description" content="Paged KV cache, continuous batching, and the parts that didn't work. 2.0-2.4x the throughput of Hugging Face, first token ~200x sooner.">
+  <meta property="og:type" content="article">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css?v=4">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='2' width='12' height='12' rx='3' fill='%232a78d6'/%3E%3Crect x='18' y='2' width='12' height='12' rx='3' fill='%232a78d6'/%3E%3Crect x='2' y='18' width='12' height='12' rx='3' fill='%23eb6834'/%3E%3Crect x='18' y='18' width='12' height='12' rx='3' fill='%23c3c2b7'/%3E%3C/svg%3E">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="../">mini-infer</a>
+    <nav>
+      <a href="../#how">How it works</a>
+      <a href="../#results">Results</a>
+      <a href="./">Blog</a>
+      <a class="gh" href="https://github.com/Vansh8010-boop/LLM-Inference-Engine">GitHub</a>
+    </nav>
+  </header>
+
+  <main>
+    <article class="post">
+      <p class="eyebrow">Blog</p>
+      <h1>What I learned building an LLM inference engine</h1>
+      <p class="byline">Vansh Kulshrestha · November 2026</p>
+
+      <p class="post-lede">I spent five weeks building an LLM serving engine from scratch, and it serves Qwen2.5 to many users at
+        once 2.0–2.4× faster than Hugging Face, with the first word of each reply arriving about 200× sooner.</p>
+      <p>The engine, mini-infer, has its own transformer forward pass, a paged KV cache, a continuous-batching scheduler that
+        can preempt requests, and a streaming OpenAI-compatible API. I measured it against Hugging Face
+        <code>model.generate()</code> on the same Tesla T4, with the same 1,000 real ShareGPT chat prompts, three runs per
+        configuration.</p>
+      <p>This post is about what I learned on the way, including the parts that didn't work. The code, charts and raw results
+        are on <a href="https://github.com/Vansh8010-boop/LLM-Inference-Engine">GitHub</a> and on the
+        <a href="../">project site</a>.</p>
+
+      <h2>Serving an LLM is mostly a memory problem</h2>
+      <p>The expensive part of serving isn't the math, it's where the model's memory of each conversation lives. To write
+        each new word, a transformer looks back at every earlier word through its keys and values. Recomputing them every
+        step is wasteful, so servers keep them in a KV cache.</p>
+      <p>For Qwen2.5-0.5B that cache costs 2 (keys and values) × 24 layers × 2 KV heads × 64 dimensions × 2 bytes =
+        <strong>12 KiB per token</strong>. A 400-token chat holds about 4.7 MB, and a server with 50 users holds hundreds of
+        megabytes that grow every step.</p>
+      <p>A naive server doesn't know how long a reply will be, so it reserves room for the longest possible one: 2,048 tokens
+        per user here. On real ShareGPT traffic the average request is 394 tokens, so <strong>80.7% of that reserved memory
+        is never used</strong>. The GPU fills up with empty space, and users who could have fit wait in line.</p>
+      <p>The KV cache itself was my first measurable win. With it, each new token costs about the same no matter how long the
+        reply gets; without it, every step re-reads the whole sequence. Over a 512-token reply on the T4 that made decoding
+        <strong>1.66× faster</strong>, and the gap keeps widening with length.</p>
+
+      <h2>Matching Hugging Face bit for bit</h2>
+      <p>Before optimizing anything, I wanted proof that my forward pass was correct: greedy output must match Hugging Face
+        token for token on 100 prompts. My first version matched <strong>93 of 100</strong>.</p>
+      <p>The 7 misses all split at near-ties, where the top two candidate tokens were one fp16 rounding step apart (16.359 vs
+        16.344). Teacher-forcing showed the math was right, so I compared every layer's output bit for bit. Layer 0's
+        attention was already off in the fourth decimal.</p>
+      <p>The cause was one argument. I copied each KV head 7 times to match the 14 query heads (grouped-query attention).
+        Hugging Face instead passes <code>enable_gqa=True</code> to PyTorch's attention, which picks a different fused kernel
+        that rounds differently. Once I did the same, every layer and the final logits matched exactly, and the test went to
+        <strong>100 of 100</strong>.</p>
+      <p>The lesson: an exact-match test catches real bugs only if you understand why it fails. "Close enough" would have
+        hidden the next bug, and the exact single-sequence path later became the reference that exposed a scheduler bug on
+        its first comparison.</p>
+
+      <h2>Paged attention: virtual memory for the KV cache</h2>
+      <p>Paging cut wasted KV memory from 80.7% to <strong>1.9%</strong>, so the same 3 GB holds
+        <strong>608 conversations instead of 119</strong>.</p>
+      <p>The idea is borrowed from operating systems. KV memory is split into fixed 16-token blocks, kept on a free list.
+        Each sequence gets a block table that maps its token positions to whichever physical blocks it was given, so its
+        memory doesn't need to be contiguous. A sequence takes a new block only when it crosses a 16-token boundary, and
+        returns all its blocks the moment it finishes. You can watch this happen in the
+        <a href="../#how">animation on the project page</a>.</p>
+      <p>The cost moves into attention: instead of reading one tidy tensor, each step gathers keys and values through the
+        block table. I wrote that in plain PyTorch first (correct before fast), and the exact-match test passed unchanged on
+        the paged cache.</p>
+      <p>Block size is a real trade-off. Smaller blocks waste less (0.9% at 8 tokens, 1.9% at 16, 7.5% at 64) but mean bigger
+        tables and more gather overhead, which is why 16 is the usual choice.</p>
+
+      <h2>Continuous batching: the main result</h2>
+      <p>From 8 concurrent users up, mini-infer serves <strong>2.0–2.4×</strong> the throughput of Hugging Face's best static
+        batching, and at 32 users the first token arrives in <strong>0.18 s instead of 39.4 s</strong>.</p>
+      <figure class="card chart-card post-figure">
+        <figcaption><h3 id="chart-title">From 8 users up, mini-infer serves 2.0–2.4× Hugging Face's throughput</h3>
+          <p>output tokens per second · Qwen2.5-0.5B FP16 on one Tesla T4 · ShareGPT prompts · median of 3 runs</p></figcaption>
+        <div class="chart-box"><canvas id="c-post-throughput" aria-labelledby="chart-title"></canvas></div>
+      </figure>
+      <p>Static batching groups requests, pads them to the longest one, and runs the whole batch until its longest member
+        finishes. A short request that arrives one second late waits for the entire batch. My scheduler rebuilds the batch
+        at every step instead:</p>
+      <ol>
+        <li>Give each running sequence a slot for its next token. If blocks run out, preempt the newest sequence: free its
+          blocks and requeue it to be recomputed later.</li>
+        <li>If nobody was just preempted, admit waiting requests first-come first-served while blocks, seats and a prefill
+          token budget allow.</li>
+        <li>Run one forward pass for all decodes and new prompts together, then retire finished sequences and free their
+          blocks.</li>
+      </ol>
+      <p>The ablation at 32 users shows where the speed comes from. My forward pass alone runs at exactly Hugging Face's
+        sequential speed (35.1 tok/s both). Hugging Face's static batching reaches 170 tok/s (4.9×); paging plus continuous
+        batching reaches 342 tok/s (9.7×).</p>
+      <p>My favourite bug of the project lived here. The scheduler did <code>self.running = decode</code> and then
+        <code>self.running += prefill</code>. In Python, <code>+=</code> extends the list in place, so <code>decode</code>
+        grew too, and every newly admitted request was also scheduled as a decode in the same step. Each answer came out
+        shifted by one token. The exact reference caught it on the first comparison, and the fix was one line:
+        <code>self.running = decode + prefill</code>.</p>
+
+      <h2>Batched output is never bit-identical, and that's fine</h2>
+      <p>Once requests share a batch, exact matching stops being possible: in my first batched run, 31 of 32 sequences
+        matched and one diverged at a tie 0.0156 apart.</p>
+      <p>The reason is batch invariance. A matrix multiply over 32 rows picks different cuBLAS kernels than one over 1 row,
+        and attention with a padding mask uses a different SDPA kernel than attention without one. The results differ in the
+        last fp16 bit, which can flip a greedy choice only when the top two tokens are essentially tied.</p>
+      <p>So the batched test asks a sharper question than "does it match". Every sequence must match the exact
+        single-sequence reference, except where it diverges at a genuine near-tie, and at each divergence the test measures
+        the reference's logit gap. A gap under 0.125 is rounding; a real bug shows gaps of 5 to 20, which is exactly what the
+        scheduler bug produced.</p>
+
+      <h2>Two features that were correct but not faster</h2>
+      <p>INT8 weights and speculative decoding both passed their quality checks, and neither sped anything up on this
+        hardware.</p>
+      <div class="table-wrap">
+        <table>
+          <tr><th></th><th>What worked</th><th>Why it wasn't faster</th></tr>
+          <tr><td>INT8 weights (per-channel, weight-only)</td><td>36% less weight memory; WikiText-2 perplexity 13.652 → 13.626,
+            no measurable loss</td><td>PyTorch's fused INT8 kernel slows down with the number of rows (70 ms vs 0.6 ms for
+            FP16 at 1,024 rows). Converting to FP16 per call is faster, but still loses to plain FP16: 28 vs 37 tok/s for one
+            sequence</td></tr>
+          <tr><td>Speculative decoding (0.5B drafts, 1.5B verifies)</td><td>68% of draft tokens accepted at k = 2; output
+            matches the 1.5B model alone</td><td>0.90× at k = 2. Small models at batch size 1 are limited by CPU kernel
+            launches, not GPU math, so a 0.5B step costs about half a 1.5B step instead of a tenth</td></tr>
+        </table>
+      </div>
+      <p>INT8 also taught me a numerics lesson. My first fallback computed <code>x @ int8_weights</code> and scaled
+        afterwards. Summing values up to 127 over 4,864 inputs overflows FP16's maximum of 65,504, so perplexity came out as
+        NaN. Scaling the weights first fixed it, and a regression test now feeds realistic large activations through a layer
+        of the same shape.</p>
+      <p>Both results point at the same next step: fused kernels and CUDA graphs. Speculative decoding also pays off with a
+        much larger target model, such as a 7B, where the draft is genuinely cheap by comparison.</p>
+
+      <h2>Benchmarking honestly</h2>
+      <p>The final numbers come from one Kaggle T4, with every configuration run three times and the median reported, because
+        my laptop could not run the sweep without crashing.</p>
+      <p>The laptop has a 6 GB RTX 3050 and 16 GB of RAM, and it was the RAM that ran out, not the GPU. A model download, a
+        GPU benchmark and the test suite running together exhausted Windows' memory budget. Worse, a download progress bar
+        redraws itself with carriage returns and never prints a newline, so the PowerShell filter I piped it through buffered
+        one ever-growing line until the shell itself crashed.</p>
+      <p>The fixes were boring and effective: one heavy job at a time, logs written to files, and the full sweep moved to
+        Kaggle. The rules I kept:</p>
+      <ul>
+        <li>Same GPU, same model and the same frozen workload file for every configuration in a comparison.</li>
+        <li>3 warm-up requests, then 3 runs per configuration, median reported.</li>
+        <li>Report p50 and p99, not just the mean: tail latency is what users feel.</li>
+        <li>Give the baseline its best settings. Hugging Face got FP16 and its best batch size, not a crippled default.</li>
+        <li>Rebuild every chart from saved result files, never from numbers typed by hand.</li>
+      </ul>
+      <p>The result held on both GPUs: 2.37× at 32 users on the laptop, 2.01× at 32 users and 2.36× at 64 on the T4.</p>
+
+      <h2>What I'd tell myself at the start</h2>
+      <p>Serving speed comes from memory management and scheduling far more than from clever math, and correctness tests are
+        what let you change either without fear.</p>
+      <ul>
+        <li><strong>Write the exact-match test first.</strong> It exposed a kernel mismatch, later caught a scheduler bug, and
+          taught me the difference between a bug and rounding.</li>
+        <li><strong>Measure the boring parts.</strong> At small batch sizes my engine was limited by the CPU launching GPU
+          work, which no amount of GPU math would fix.</li>
+        <li><strong>Keep the negative results.</strong> INT8 and speculative decoding not paying off taught me more about
+          hardware than the features that worked.</li>
+      </ul>
+      <p>If I kept going, the next steps are CUDA graphs to cut launch overhead, a fused paged-attention kernel in Triton,
+        chunked prefill so long prompts stop stalling everyone else, and a 7B target model to give speculative decoding a
+        fair chance.</p>
+
+      <div class="post-end">
+        <a class="btn primary" href="../#results">See all the results</a>
+        <a class="btn" href="https://github.com/Vansh8010-boop/LLM-Inference-Engine">Read the code</a>
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Built by Vansh Kulshrestha · <a href="https://github.com/Vansh8010-boop/LLM-Inference-Engine">source on GitHub</a> · MIT license</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="blog.js?v=2"></script>
+</body>
+</html>
